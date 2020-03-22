@@ -1,0 +1,120 @@
+---
+title: 'R tutorial Peru: trait data exploration'
+author: "Julia Chacón"
+date: "22/3/2020"
+output: html_document
+---
+
+<style>
+p.caption {
+  font-size: 0.8em;
+}
+</style>
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+```{r Call the libraries, include=FALSE}
+library("tidyverse")
+library("dataDownloader")
+library("DBI")
+library("vegan")
+library("ggvegan")
+library("patchwork")
+library("ggfortify")
+```
+
+```{r read trait data, include=FALSE}
+traits <- read_csv(file = "traits/data/PFTC3.7_Traits_2018_Peru_cleaned.csv")
+```
+
+# PFTC3 Wayqecha (PERÚ)
+
+## Exploring how the data are organized
+
+### Trait data
+
+We suggest starting exploring the data sets of traits, asking for the names of the columns, the levels of each factor, and dimensions.
+
+```{r Trait data, eval=FALSE}
+colnames(traits)
+```
+
+Explore a bit the levels of each factor, and the variable names. 
+
+```{r Trait data2, eval=TRUE}
+unique(traits$Elevation)
+```
+
+```{r Trait data3, eval=TRUE}
+unique(traits$Treatment)
+unique(traits$Site)## just change here the name of the column you want to explore
+```
+
+## Multivariate exploratory
+### PCA
+
+This document explains how to perform a PCA using "ggfortify" package and "ggplot: autoplot"
+
+First, subset the big "traits" tibble into a smaller one. Log-transform some of the traits, select a few traits that are quite complete and the columns Taxon and Site.
+
+```{r PCA, eval=TRUE}
+traits.sel <- traits %>% # trait selection
+    mutate(Leaf_Thickness_Ave_mm.log = log(Leaf_Thickness_Ave_mm), 
+             Leaf_Area_cm2.log = log(Leaf_Area_cm2)) %>%
+                 select(Taxon, Site, Plant_Height_cm,
+                     Leaf_Thickness_Ave_mm.log, Leaf_Area_cm2.log)
+```
+
+Select only those data from the site Wayquecha. For doing the PCA we only need the traits values. Eliminate the NAs too.
+
+```{r PCA2, eval=TRUE}
+traits.WAY <- traits.sel %>%
+  filter(Site=="WAY") %>%
+    drop_na()
+```
+
+Now, store the result of the "pca" into an object pca.WAY. Eliminate the columns SIte and Taxon, we don´t need them for the pca. For that we first scale to mean 0 and unit variance. Then, do the pca using prcomp()
+
+```{r PCA3, eval=TRUE}
+pca.WAY <- traits.WAY %>% # store result as "pca"
+  select(-Taxon) %>%   # remove Taxon column
+  select(-Site) %>% # remove Site column
+  scale() %>%            # scale to 0 mean and unit variance
+  prcomp() #do the pca
+```
+
+And plot it using "autoplot" function. 
+```{r PCA4, eval=TRUE}
+autoplot(pca.WAY)
+```
+
+Every species appeared as a black dot. We can colour that based on the Taxon name (species name). So, every taxon is going to be plotted in a different colour.
+
+Better plot it without the legend, because there are too many species and the legend is huge. But you are free of plotting the legend if you want. 
+
+```{r PCA5, eval=TRUE}
+autoplot(pca.WAY, data = traits.WAY, colour = 'Taxon') +
+  theme(legend.position = "none") # without a legend
+```
+
+You can plot the loadings on top:
+```{r PCA6, eval=TRUE}
+autoplot(pca.WAY, data = traits.WAY, colour = 'Taxon', loadings = TRUE) +
+  theme(legend.position = "none")
+```
+
+Even play with the loadings colour, labels and size. Again, witout the legend
+
+```{r PCA7, eval=TRUE}
+autoplot(pca.WAY, data = traits.WAY, colour = 'Taxon',
+         loadings = TRUE, loadings.colour = 'blue',
+         loadings.label = TRUE, loadings.label.size = 3)+
+  theme(legend.position = "none")
+```
