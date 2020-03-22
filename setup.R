@@ -19,7 +19,8 @@ CRAN_needed <- c(
   "DBI",
   "remotes",
   "patchwork",
-  "rmarkdown")
+  "rmarkdown",
+  "ggfortify")
 
 # check against currently installed packages
 installed_packages <- .packages(all.available = TRUE)
