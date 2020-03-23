@@ -60,37 +60,36 @@ unique(traits$Site)## just change here the name of the column you want to explor
 ## Multivariate exploratory
 ### PCA
 
-This document explains how to perform a PCA using "ggfortify" package and "ggplot: autoplot"
+This document explains how to perform a PCA using `ggfortify` package and `ggplot::autoplot`
 
 First, subset the big "traits" tibble into a smaller one. Log-transform some of the traits, select a few traits that are quite complete and the columns Taxon and Site.
 
 ```{r PCA, eval=TRUE}
 traits.sel <- traits %>% # trait selection
     mutate(Leaf_Thickness_Ave_mm.log = log(Leaf_Thickness_Ave_mm), 
-             Leaf_Area_cm2.log = log(Leaf_Area_cm2)) %>%
-                 select(Taxon, Site, Plant_Height_cm,
-                     Leaf_Thickness_Ave_mm.log, Leaf_Area_cm2.log)
+           Leaf_Area_cm2.log = log(Leaf_Area_cm2)) %>%
+    select(Taxon, Site, Plant_Height_cm,
+           Leaf_Thickness_Ave_mm.log, Leaf_Area_cm2.log)
 ```
 
 Select only those data from the site Wayquecha. For doing the PCA we only need the traits values. Eliminate the NAs too.
 
 ```{r PCA2, eval=TRUE}
 traits.WAY <- traits.sel %>%
-  filter(Site=="WAY") %>%
-    drop_na()
+  filter(Site == "WAY") %>%
+  drop_na()
 ```
 
-Now, store the result of the "pca" into an object pca.WAY. Eliminate the columns SIte and Taxon, we don´t need them for the pca. For that we first scale to mean 0 and unit variance. Then, do the pca using prcomp()
+Now, store the result of the PCA into an object pca.WAY. Eliminate the columns Site and Taxon, we don't need them for the PCA For that we first scale to mean 0 and unit variance. Then, do the PCA using `prcomp()`
 
 ```{r PCA3, eval=TRUE}
 pca.WAY <- traits.WAY %>% # store result as "pca"
-  select(-Taxon) %>%   # remove Taxon column
-  select(-Site) %>% # remove Site column
+  select(-Site, -Taxon) %>%   # remove Site & Taxon columns
   scale() %>%            # scale to 0 mean and unit variance
   prcomp() #do the pca
 ```
 
-And plot it using "autoplot" function. 
+And plot it using the `autoplot` function. 
 ```{r PCA4, eval=TRUE}
 autoplot(pca.WAY)
 ```
@@ -110,11 +109,11 @@ autoplot(pca.WAY, data = traits.WAY, colour = 'Taxon', loadings = TRUE) +
   theme(legend.position = "none")
 ```
 
-Even play with the loadings colour, labels and size. Again, witout the legend
+Even play with the loadings colour, labels and size. Again, without the legend
 
 ```{r PCA7, eval=TRUE}
 autoplot(pca.WAY, data = traits.WAY, colour = 'Taxon',
          loadings = TRUE, loadings.colour = 'blue',
-         loadings.label = TRUE, loadings.label.size = 3)+
+         loadings.label = TRUE, loadings.label.size = 3) +
   theme(legend.position = "none")
 ```
