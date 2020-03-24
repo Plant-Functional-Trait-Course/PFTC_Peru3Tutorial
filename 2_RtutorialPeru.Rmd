@@ -20,14 +20,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r Call the libraries, include=FALSE}
+```{r load-packages, include=FALSE}
 library("tidyverse")
 library("dataDownloader")
-library("DBI")
 library("vegan")
 library("ggvegan")
 library("patchwork")
-library("ggfortify")
+library("glue")
+#library("ggfortify")
 ```
 
 ```{r read trait data, include=FALSE}
@@ -60,61 +60,102 @@ unique(traits$Site)## just change here the name of the column you want to explor
 ## Multivariate exploratory
 ### PCA
 
-This document explains how to perform a PCA using "ggfortify" package and "ggplot: autoplot"
+This document explains how to perform a PCA using `ggfortify` package and `ggplot::autoplot`
 
 First, subset the big "traits" tibble into a smaller one. Log-transform some of the traits, select a few traits that are quite complete and the columns Taxon and Site.
 
-```{r PCA, eval=TRUE}
+```{r transform-data, eval=TRUE}
 traits.sel <- traits %>% # trait selection
     mutate(Leaf_Thickness_Ave_mm.log = log(Leaf_Thickness_Ave_mm), 
-             Leaf_Area_cm2.log = log(Leaf_Area_cm2)) %>%
-                 select(Taxon, Site, Plant_Height_cm,
-                     Leaf_Thickness_Ave_mm.log, Leaf_Area_cm2.log)
+           Leaf_Area_cm2.log = log(Leaf_Area_cm2)) %>%
+    select(Taxon, Site, Plant_Height_cm,
+           Leaf_Thickness_Ave_mm.log, Leaf_Area_cm2.log)
 ```
 
 Select only those data from the site Wayquecha. For doing the PCA we only need the traits values. Eliminate the NAs too.
 
-```{r PCA2, eval=TRUE}
+```{r filter-data, eval=TRUE}
 traits.WAY <- traits.sel %>%
-  filter(Site=="WAY") %>%
-    drop_na()
+  filter(Site == "WAY") %>%
+  drop_na()
 ```
 
-Now, store the result of the "pca" into an object pca.WAY. Eliminate the columns SIte and Taxon, we don´t need them for the pca. For that we first scale to mean 0 and unit variance. Then, do the pca using prcomp()
+Now, store the result of the PCA into an object pca.WAY. Eliminate the columns Site and Taxon, we don't need them for the PCA. 
+Then, do the PCA using `vegan::rda()`. 
+We use the argument `scale = TRUE` so that each variable is transformed to have a mean of zero and unit variance. 
+This is necessary because the variables have different scales.
 
-```{r PCA3, eval=TRUE}
-pca.WAY <- traits.WAY %>% # store result as "pca"
-  select(-Taxon) %>%   # remove Taxon column
-  select(-Site) %>% # remove Site column
-  scale() %>%            # scale to 0 mean and unit variance
-  prcomp() #do the pca
+```{r PCA, eval=TRUE}
+pca.WAY <- traits.WAY %>% # store result as "pca.WAY"
+  select(-Site, -Taxon) %>%   # remove Site & Taxon columns
+  rda(scale = TRUE) #do the PCA
 ```
 
-And plot it using "autoplot" function. 
-```{r PCA4, eval=TRUE}
-autoplot(pca.WAY)
-```
+And plot it using the `autoplot` function (this is coming from the `ggvegan` package, and is using `autoplot.rda`). 
 
-Every species appeared as a black dot. We can colour that based on the Taxon name (species name). So, every taxon is going to be plotted in a different colour.
-
-Better plot it without the legend, because there are too many species and the legend is huge. But you are free of plotting the legend if you want. 
-
-```{r PCA5, eval=TRUE}
-autoplot(pca.WAY, data = traits.WAY, colour = 'Taxon') +
-  theme(legend.position = "none") # without a legend
-```
-
-You can plot the loadings on top:
-```{r PCA6, eval=TRUE}
-autoplot(pca.WAY, data = traits.WAY, colour = 'Taxon', loadings = TRUE) +
+```{r plot-PCA, eval=TRUE}
+autoplot(pca.WAY) +
   theme(legend.position = "none")
 ```
 
-Even play with the loadings colour, labels and size. Again, witout the legend
+Every leaf appears as a red dot. 
+The traits are shown by arrows. Unfortunately the defaults have made the arrows too long, but we can control that with the `const` argument to `autoplot.rda` (You will need the latest version of `ggvegan` for this to work - install with `remotes::install_github("richardjtelford/ggvegan")`).
 
-```{r PCA7, eval=TRUE}
-autoplot(pca.WAY, data = traits.WAY, colour = 'Taxon',
-         loadings = TRUE, loadings.colour = 'blue',
-         loadings.label = TRUE, loadings.label.size = 3)+
+```{r better-plot-PCA, eval=TRUE}
+autoplot(pca.WAY, const = c(0.2, 1)) + 
+  xlim(-.19, NA) + # make more space for the labels
   theme(legend.position = "none")
 ```
+
+
+
+It would be nice to show PCA with different colours for the different species.
+We cannot do that directly with `autoplot.rda()`, but we can do it manually, using `fortify()` to extract the scores from the PCA.
+This gives us lots of control over the plot.
+
+```{r better-plot-PCA2, eval=TRUE}
+#extract scores from ordination
+fpca.WAY <- fortify(pca.WAY, const = c(0.2, 1), axes = 1:2)
+
+#get the site scores (ie each leaf)
+fpca.WAY_leaves <- fpca.WAY %>% 
+  filter(Score == "sites") %>% 
+  bind_cols(traits.WAY)
+
+# get the trait/variable scores (species in vegan terminology)
+fpca.WAY_traits <- fpca.WAY %>% 
+  filter(Score == "species") 
+
+
+#plot the leaf scores         
+g <- ggplot(fpca.WAY_leaves, aes(x = PC1, y = PC2)) +
+  geom_point(aes(colour = Taxon), show.legend = FALSE) +
+  coord_equal() # force scale to be correct
+
+#add trait arrows to plot
+g <- g +
+  geom_segment(data = fpca.WAY_traits,
+               aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               arrow = arrow(length = unit(0.2, "cm")),
+               colour = "navy") +
+  geom_text(data = fpca.WAY_traits, # add labels
+            aes(x = PC1, y = PC2, label = Label), nudge_x = -0.005, size = 3, hjust = 1)
+
+g <- g + 
+  xlim(-.20, NA) + #space for labels
+  theme(legend.position = "none")# no legend as too large
+g
+```
+
+We can finish off the plot by adding the proportion of variance explained by each axis to the plot. 
+We can calculate this with the function `eigenvals`. 
+We can make the labels with `glue::glue()` or with `paste()`.  
+
+```{r better-plot-PCA3}
+explained <- eigenvals(pca.WAY)[1:2] / sum(eigenvals(pca.WAY)) * 100
+explained <- round(explained, 1)
+
+g + 
+  labs(x = glue("PC1 [{explained[1]}%]"), y = glue("PC1 [{explained[2]}%]")) 
+```
+

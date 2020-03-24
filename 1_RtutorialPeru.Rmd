@@ -115,7 +115,7 @@ traits <- read_csv(file = "traits/data/PFTC3.7_Traits_2018_Peru_cleaned.csv")
 The Carbon fluxes data are located in Peru/Cflux/data, in a single file.
                                                             To read the csv file:
 ```{r Carbon fluxes data, eval=TRUE}
-Cflux <- read_csv(file = "Cflux/data/standardControlFluxPE_2016.Rdata")
+Cflux <- load(file = "Cflux/data/standardControlFluxPE_2016.Rdata")
 head(Cflux)
 ```
                                                    
