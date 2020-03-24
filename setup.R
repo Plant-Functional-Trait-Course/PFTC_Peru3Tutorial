@@ -19,8 +19,7 @@ CRAN_needed <- c(
   "DBI",
   "remotes",
   "patchwork",
-  "rmarkdown",
-  "ggfortify")
+  "rmarkdown")
 
 # check against currently installed packages
 installed_packages <- .packages(all.available = TRUE)
@@ -33,6 +32,7 @@ if(length(CRAN_needed2) > 0){
 
 # Install libraries from GitHub:
 remotes::install_github("gavinsimpson/ggvegan", upgrade = FALSE)
+remotes::install_github("richardjtelford/ggvegan", upgrade = FALSE)
 remotes::install_github("Between-the-Fjords/dataDownloader", upgrade = FALSE)
 # check all packages downloaded 
 # if this line doesn't work - assert that didn't install
