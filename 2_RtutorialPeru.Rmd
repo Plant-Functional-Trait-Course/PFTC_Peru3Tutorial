@@ -27,7 +27,6 @@ library("vegan")
 library("ggvegan")
 library("patchwork")
 library("glue")
-#library("ggfortify")
 ```
 
 ```{r read trait data, include=FALSE}
@@ -60,7 +59,7 @@ unique(traits$Site)## just change here the name of the column you want to explor
 ## Multivariate exploratory
 ### PCA
 
-This document explains how to perform a PCA using `ggfortify` package and `ggplot::autoplot`
+This document explains how to perform a PCA using `vegan::rda()` and `ggvegan::autoplot.rda()`
 
 First, subset the big "traits" tibble into a smaller one. Log-transform some of the traits, select a few traits that are quite complete and the columns Taxon and Site.
 
@@ -103,11 +102,9 @@ The traits are shown by arrows. Unfortunately the defaults have made the arrows 
 
 ```{r better-plot-PCA, eval=TRUE}
 autoplot(pca.WAY, const = c(0.2, 1)) + 
-  xlim(-.19, NA) + # make more space for the labels
+  xlim(-.22, NA) + # make more space for the labels
   theme(legend.position = "none")
 ```
-
-
 
 It would be nice to show PCA with different colours for the different species.
 We cannot do that directly with `autoplot.rda()`, but we can do it manually, using `fortify()` to extract the scores from the PCA.
@@ -117,22 +114,28 @@ This gives us lots of control over the plot.
 #extract scores from ordination
 fpca.WAY <- fortify(pca.WAY, const = c(0.2, 1), axes = 1:2)
 
-#get the site scores (ie each leaf)
+head(fpca.WAY)#inspect the object to see the differences between "sites" and "species" in vegan terminology
+
+#get the "site" scores (i.e. each leaf)
 fpca.WAY_leaves <- fpca.WAY %>% 
   filter(Score == "sites") %>% 
   bind_cols(traits.WAY)
 
-# get the trait/variable scores (species in vegan terminology)
+# get the trait/variable scores ("species" in vegan terminology)
 fpca.WAY_traits <- fpca.WAY %>% 
   filter(Score == "species") 
-
 
 #plot the leaf scores         
 g <- ggplot(fpca.WAY_leaves, aes(x = PC1, y = PC2)) +
   geom_point(aes(colour = Taxon), show.legend = FALSE) +
   coord_equal() # force scale to be correct
 
-#add trait arrows to plot
+g
+```
+
+Add trait arrows to plot:
+
+```{r better-plot-PCA3, eval=TRUE}
 g <- g +
   geom_segment(data = fpca.WAY_traits,
                aes(x = 0, y = 0, xend = PC1, yend = PC2),
@@ -151,7 +154,7 @@ We can finish off the plot by adding the proportion of variance explained by eac
 We can calculate this with the function `eigenvals`. 
 We can make the labels with `glue::glue()` or with `paste()`.  
 
-```{r better-plot-PCA3}
+```{r better-plot-PCA4}
 explained <- eigenvals(pca.WAY)[1:2] / sum(eigenvals(pca.WAY)) * 100
 explained <- round(explained, 1)
 
