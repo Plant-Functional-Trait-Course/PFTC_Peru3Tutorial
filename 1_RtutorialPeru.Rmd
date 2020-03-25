@@ -60,7 +60,7 @@ library("DBI")
 library("vegan")
 library("ggvegan")
 library("patchwork")
-library("ggfortify")
+library("glue")
 ```
 
 ## 3. Download the data
